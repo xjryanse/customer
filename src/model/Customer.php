@@ -16,6 +16,18 @@ class Customer extends Base
     {
         return $value ? SystemFileService::getInstance( $value )->get() : $value ;
     }
+    /**
+     * 图片修改器，图片带id只取id
+     * @param type $value
+     * @throws \Exception
+     */
+    public function setLicencePicAttr( $value )
+    {
+        if((is_array($value)|| is_object($value)) && isset( $value['id'])){
+            $value = $value['id'];
+        }
+        return $value;
+    }
 
 
 }
