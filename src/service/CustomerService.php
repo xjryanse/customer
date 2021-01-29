@@ -14,6 +14,18 @@ class CustomerService {
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\Customer';
 
     /**
+     * 额外详情信息
+     */
+    public static function extraDetail(&$item, $uuid) {
+        if(!$item){ return false;}
+        self::commExtraDetail($item, $uuid);        
+        //用户量数据统计
+        $con[] = ['customer_id','=',$uuid];
+        $item->SCuser_id = CustomerUserService::count( $con );
+        return $item;
+    }
+
+    /**
      * 根据统一社会信用代码取信息
      * @param type $licenceNo   统一社会信用代码
      * @param type $con         查询条件
