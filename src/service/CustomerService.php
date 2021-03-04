@@ -2,6 +2,8 @@
 
 namespace xjryanse\customer\service;
 
+use xjryanse\logic\Arrays;
+use think\facade\Cache;
 /**
  * 客户表
  */
@@ -17,11 +19,16 @@ class CustomerService {
      * 额外详情信息
      */
     public static function extraDetail(&$item, $uuid) {
+        $cacheKey = "CustomerService.extraDetail";
         if(!$item){ return false;}
         self::commExtraDetail($item, $uuid);        
         //用户量数据统计
-        $con[] = ['customer_id','=',$uuid];
-        $item->SCuser_id = CustomerUserService::count( $con );
+        $userStatics = Cache::get( $cacheKey );
+        if(!$userStatics){
+            $userStatics = CustomerUserService::mainModel()->group('customer_id')->column('count(1) as userCount',"customer_id");
+            Cache::set($cacheKey,$userStatics,2);
+        }
+        $item->SCuser_id = Arrays::value($userStatics, $uuid,0);
         return $item;
     }
 
