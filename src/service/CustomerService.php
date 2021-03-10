@@ -15,6 +15,13 @@ class CustomerService {
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\Customer';
 
+    public function extraAfterDelete(){
+        $con[] = [ 'customer_id','=',$this->uuid ];
+        if(!$this->get(0)){
+            //删除用户的关联
+            CustomerUserService::mainModel()->where( $con )->delete();
+        }
+    }
     /**
      * 额外详情信息
      */
