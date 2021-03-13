@@ -4,6 +4,7 @@ namespace xjryanse\customer\service;
 
 use xjryanse\logic\Arrays;
 use think\facade\Cache;
+use Exception;
 /**
  * 客户表
  */
@@ -15,6 +16,19 @@ class CustomerService {
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\Customer';
 
+    public static function extraPreSave( &$data,$uuid)
+    {
+        if(!Arrays::value($data, 'customer_name')){
+            throw new Exception('公司名称必须');
+        }
+        $con[] = ['customer_name','=',Arrays::value($data, 'customer_name')];
+        if(self::find($con)){
+            throw new Exception('公司名称已存在');
+        }
+        
+        return $data;
+    }
+    
     public function extraAfterDelete(){
         $con[] = [ 'customer_id','=',$this->uuid ];
         if(!$this->get(0)){
