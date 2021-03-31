@@ -16,6 +16,21 @@ class CustomerService {
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\Customer';
 
+//    public static function paginate( $con = [],$order='',$perPage=10,$having = '')
+//    {
+//        //默认带数据权限
+//        $conAll = array_merge( $con ,self::commCondition() );
+//        //如果数据权限没记录，尝试去除数据权限进行搜索
+//        $count = self::mainModel()->where( $conAll )->count();
+//        if(!$count){
+//            $conAll = array_merge( $con ,self::commCondition( false ));
+//        }
+//
+//        $res = self::mainModel()->where( $conAll )->order($order)->paginate( intval($perPage) );
+//        $resp = $res ? array_merge($res->toArray(),['con'=>$conAll]) : [] ;               
+//        return $resp ;               
+//    }    
+    
     public static function extraPreSave( &$data,$uuid)
     {
         if(!Arrays::value($data, 'customer_name')){

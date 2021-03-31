@@ -2,11 +2,27 @@
 namespace xjryanse\customer\model;
 
 use xjryanse\system\service\SystemFileService;
+use xjryanse\logic\Debug;
 /**
  * 客户表
  */
 class Customer extends Base
 {
+    public function setTable($tableArr = [],$con = [])
+    {
+        $prefix = config('database.prefix');
+        $sql = "(SELECT
+                a.* ,
+                count(*) as SCuser_id
+            FROM
+                ydzb_customer AS a
+                left JOIN ". $prefix ."customer_user AS b ON a.id = b.customer_id
+                group by a.id) as eee";
+        Debug::debug("sql",$sql);
+        $this->table = $sql;
+        return $this->table;
+    }
+    
     /**
      * 营业执照照片
      * @param type $value
