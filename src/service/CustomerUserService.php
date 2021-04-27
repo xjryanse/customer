@@ -12,7 +12,7 @@ class CustomerUserService {
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\CustomerUser';
-
+    
     /**
      * 公司和用户进行绑定
      * @param type $customerId
@@ -21,7 +21,7 @@ class CustomerUserService {
     public static function bind( $customerId, $userId ){
         $con[] = ['customer_id','=',$customerId];
         $con[] = ['user_id','=',$userId];
-        $res    = self::find( $con );
+        $res    = self::find( $con ,86400);
         //没有绑定记录则绑定，有绑定记录不处理
         if(!$res){
             $joinData['customer_id']    = $customerId;
