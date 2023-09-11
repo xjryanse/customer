@@ -8,6 +8,8 @@ use xjryanse\logic\Debug;
  */
 class Customer extends Base
 {
+    public static $picFields = ['licence_pic','logo'];
+    
     public function setTable($tableArr = [],$con = [])
     {
         $prefix = config('database.prefix');
@@ -30,7 +32,8 @@ class Customer extends Base
      */
     public function getLicencePicAttr( $value )
     {
-        return $value ? SystemFileService::getInstance( $value )->get() : $value ;
+//        return $value ? SystemFileService::getInstance( $value )->get() : $value ;
+        return self::getImgVal($value);
     }
     /**
      * 图片修改器，图片带id只取id
@@ -43,6 +46,25 @@ class Customer extends Base
             $value = $value['id'];
         }
         return $value;
+    }
+    
+    
+    /**
+     * 用户头像图标
+     * @param type $value
+     * @return type
+     */
+    public function getLogoAttr($value) {
+        return self::getImgVal($value);
+    }
+
+    /**
+     * 图片修改器，图片带id只取id
+     * @param type $value
+     * @throws \Exception
+     */
+    public function setLogoAttr($value) {
+        return self::setImgVal($value);
     }
 
 

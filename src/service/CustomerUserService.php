@@ -2,6 +2,14 @@
 
 namespace xjryanse\customer\service;
 
+use xjryanse\logic\Arrays;
+use xjryanse\logic\DataCheck;
+use xjryanse\logic\Strings;
+use xjryanse\order\service\OrderService;
+use xjryanse\user\service\UserService;
+use xjryanse\wechat\service\WechatWePubFansUserService;
+use xjryanse\wechat\service\WechatWePubFansService;
+use Exception;
 /**
  * 客户用户表
  */
@@ -9,9 +17,74 @@ class CustomerUserService {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelQueryTrait;
+    use \xjryanse\traits\MiddleModelTrait;
+    use \xjryanse\traits\StaticModelTrait;
 
     protected static $mainModel;
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\CustomerUser';
+    //直接执行后续触发动作
+    protected static $directAfter = true;
+    
+    public static function extraDetails($ids) {
+        return self::commExtraDetails($ids, function($lists) use ($ids){
+            $userIds = array_column($lists,'user_id');
+            $cond[]     = ['user_id','in',$userIds];
+            $wechatWePubBindCounts  = WechatWePubFansUserService::mainModel()->where($cond)->group('user_id')->column('count(1) as number','user_id');            
+            $cond[]     = ['customer_id','in',array_column($lists,'customer_id')];
+            $baoTangCounts = OrderService::mainModel()->alias('a')->join('w_order_bao_bus b','a.id = b.order_id')
+                    ->where($cond)->group('customer_id,user_id')->column('count(1) as number','concat(customer_id,user_id)');
+            foreach ($lists as &$v) {
+                //微信公众号绑定数
+                $v['wechatWePubBindCount']  = Arrays::value($wechatWePubBindCounts, $v['user_id'],0);
+                // 包车趟数
+                $v['baoTangCount']          = Arrays::value($baoTangCounts, $v['customer_id'].$v['user_id'],0);
+            }
+            
+            return $lists;
+        });
+    }
+    
+    /**
+     * 用户的客户列表
+     */
+    public static function userCustomerIds($userId,$order=''){
+        $con[] = ['user_id','in',$userId];
+        return self::mainModel()->where($con)->order($order)->column('customer_id');
+    }
+    /**
+     * 该用户是管理员的客户id数组
+     * @param type $userId
+     * @return type
+     */
+    public static function userManageCustomerIds($userId){
+        $conCust[] = ['user_id','in',$userId];
+        // 只提取管理员
+        $conCust[] = ['is_manager', '=', 1];
+        return self::mainModel()->where($conCust)->column('customer_id');
+    }
+    
+    /**
+     * 客户信息
+     */
+    public static function customerUserInfos($customerIds, $con = []){
+        $con[]      = ['customer_id','in',$customerIds];
+        $userTable  = UserService::getTable();
+        return self::middleInfos('user_id', $userTable, $con,'nickname,realname,phone');
+    }
+
+    /**
+     * 提取客户下挂管理员（一般用于消息推送）
+     * @param type $customerId
+     * @return type
+     */
+    public static function customerManageUserIds($customerId){
+        $conCust[] = ['customer_id','in',$customerId];
+        // 只提取管理员
+        $conCust[] = ['is_manager', '=', 1];
+
+        return self::staticConColumn('user_id', $conCust);
+    }
     
     /**
      * 公司和用户进行绑定
@@ -19,6 +92,10 @@ class CustomerUserService {
      * @param type $userId
      */
     public static function bind( $customerId, $userId ){
+        if(!$customerId || !$userId){
+            return false;
+        }
+
         $con[] = ['customer_id','=',$customerId];
         $con[] = ['user_id','=',$userId];
         $res    = self::find( $con ,86400);
@@ -30,7 +107,75 @@ class CustomerUserService {
         }
         return $res;
     }
-    /*     * ****** */
+    /**
+     * 20230522:执行ajax绑定
+     * @param type $id
+     * @param type $param
+     */
+    public static function doPhoneBind($id,$param){
+        DataCheck::must($param, ['phone','customer_id']);
+        $phone          = Arrays::value($param, 'phone');
+        $customerId     = Arrays::value($param, 'customer_id');
+        if(!Strings::isPhone($phone)){
+            throw new Exception('手机号码格式错误');
+        }
+        $data['realname']   = Arrays::value($param, 'realname');
+        return self::phoneBind($customerId, $phone, $data);
+    }
+    /**
+     * 20230522：手机号码绑定
+     */
+    public static function phoneBind($customerId, $phone, $userData = []){
+        $userId = UserService::phoneGetId($phone, $userData);
+        return self::bind($customerId, $userId);
+    }
+    //2023-01-08：
+    public static function extraAfterSave(&$data, $uuid) {
+        UserService::clearCommExtraDetailsCache($data['user_id']);
+    }
+    //2023-01-08：
+    public static function extraPreUpdate(&$data, $uuid) {
+        $info = self::getInstance($uuid)->get();
+        if($info['user_id']){
+            UserService::clearCommExtraDetailsCache($info['user_id']);
+        }
+    }
+    //2023-01-08：
+    public static function extraAfterUpdate(&$data, $uuid) {
+        if($data['user_id']){
+            UserService::clearCommExtraDetailsCache($data['user_id']);
+        }
+    }
+    
+    public function extraAfterDelete($data){
+    //2023-01-08：
+        UserService::clearCommExtraDetailsCache($data['user_id']);
+    }
+    
+    public function extraPreDelete(){
+        self::checkTransaction();
+        $info = $this->get();
+        if(!$info){
+            throw new Exception('信息不存在'.$this->uuid);
+        }
+        $con[] = ['customer_id','=',$info['customer_id']];
+        $con[] = ['user_id','=',$info['user_id']];
+        $res = OrderService::mainModel()->where($con)->count(1);
+        if($res){
+            throw new Exception('该用户单位有订单，不可删');
+        }
+    }
+    /**
+     * 20230424：获取用户所属的客户，部门
+     * @param type $customerId
+     * @param type $userId
+     */
+    public static function getDeptId($customerId, $userId){
+        $con[] = ['customer_id','=',$customerId];
+        $con[] = ['user_id','=',$userId];
+        $info = self::staticConFind($con);
+        return $info ? $info['dept_id'] : '';
+    }
 
     /**
      *

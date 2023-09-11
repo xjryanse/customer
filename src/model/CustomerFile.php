@@ -2,9 +2,9 @@
 namespace xjryanse\customer\model;
 
 /**
- * 客户用户
+ * 客户上传的资料
  */
-class CustomerUser extends Base
+class CustomerFile extends Base
 {
     use \xjryanse\traits\ModelUniTrait;
     // 20230516:数据表关联字段
@@ -15,12 +15,6 @@ class CustomerUser extends Base
             'uni_field' =>'id',
             'del_check' => true
         ],
-        [
-            'field'     =>'user_id',
-            'uni_name'  =>'user',
-            'uni_field' =>'id',
-            'del_check' => true
-        ]
     ];
 
 }
