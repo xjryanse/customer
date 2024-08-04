@@ -13,7 +13,8 @@ class CustomerUser extends Base
             'field'     =>'customer_id',
             'uni_name'  =>'customer',
             'uni_field' =>'id',
-            'del_check' => true
+            'del_check' => true,
+            'del_msg'   => '该单位有绑定用户，请先解绑'
         ],
         [
             'field'     =>'user_id',

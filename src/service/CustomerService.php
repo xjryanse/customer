@@ -2,9 +2,9 @@
 
 namespace xjryanse\customer\service;
 
-use app\bus\service\BusService;
-use app\bus\service\BusFixService;
-use app\bus\service\BusTypeCustomerService;
+use xjryanse\bus\service\BusService;
+use xjryanse\bus\service\BusFixService;
+use xjryanse\bus\service\BusTypeCustomerService;
 use app\location\service\LocationService;
 use xjryanse\user\service\UserService;
 use xjryanse\order\service\OrderService;
@@ -12,6 +12,7 @@ use xjryanse\customer\service\CustomerUserService;
 use xjryanse\finance\service\FinanceStatementOrderService;
 use xjryanse\finance\service\FinanceAccountLogService;
 use xjryanse\system\service\SystemCompanyDeptService;
+use xjryanse\system\service\SystemCompanyService;
 use xjryanse\logic\Arrays;
 use xjryanse\logic\Arrays2d;
 use xjryanse\logic\DbOperate;
@@ -26,7 +27,12 @@ class CustomerService {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
     use \xjryanse\traits\RamModelTrait;
     use \xjryanse\traits\ObjectAttrTrait;
 
@@ -47,7 +53,7 @@ class CustomerService {
             'master' => true
         ],
     ];
-
+    
     public static function extraPreSave(&$data, $uuid) {
         if (!Arrays::value($data, 'customer_name')) {
             throw new Exception('公司名称必须');
@@ -208,7 +214,7 @@ class CustomerService {
     public static function extraDetails($ids) {
         return self::commExtraDetails($ids, function($lists) use ($ids) {
                     //业务员数
-                    $userArr = CustomerUserService::groupBatchCount('customer_id', $ids);
+                    // $userArr = CustomerUserService::groupBatchCount('customer_id', $ids);
                     //包车订单数
                     $conOrder[] = ['order_type', '=', 'bao'];
                     $conOrder[] = ['is_cancel', '=', '0'];
@@ -216,21 +222,21 @@ class CustomerService {
                     //剩余未收
                     $baoNeedPayArr = OrderService::groupBatchSum('customer_id', $ids, 'remainNeedPay', $conOrder);
                     // 单位的车辆数-外调车用
-                    $busCountArr = BusService::groupBatchCount('customer_id', $ids);
+                    // $busCountArr = BusService::groupBatchCount('customer_id', $ids);
                     // 部门数量
-                    $deptCountArr = SystemCompanyDeptService::groupBatchCount('bind_customer_id', $ids);
+                    // $deptCountArr = SystemCompanyDeptService::groupBatchCount('bind_customer_id', $ids);
 
                     foreach ($lists as &$v) {
                         // 20230317:车辆数
-                        $v['busCount'] = Arrays::value($busCountArr, $v['id'], 0);
+                        // $v['busCount'] = Arrays::value($busCountArr, $v['id'], 0);
                         //业务员人数
-                        $v['userCounts'] = Arrays::value($userArr, $v['id'], 0);
+                        // $v['userCounts'] = Arrays::value($userArr, $v['id'], 0);
                         //包车订单数
                         $v['baoOrderCounts'] = Arrays::value($baoOrderArr, $v['id'], 0);
                         //包车未收款
                         $v['baoNeedPay'] = Arrays::value($baoNeedPayArr, $v['id'], 0);
                         // 部门数量
-                        $v['deptCount'] = Arrays::value($deptCountArr, $v['id'], 0);
+                        // $v['deptCount'] = Arrays::value($deptCountArr, $v['id'], 0);
                         // 有营业执照
                         $v['hasLicence'] = $v['licence'] ? 1 : 0;
                         // 有爱企查编号
@@ -508,4 +514,25 @@ class CustomerService {
         return $this->getFFieldValue(__FUNCTION__);
     }
 
+    
+    /**
+     * 20231208
+     * 端口初始化时带公司初始化
+     */
+    public static function compCustomerInit($companyId){
+        $compInfo   = SystemCompanyService::getInstance($companyId)->get();
+        $cate       = Arrays::value($compInfo, 'cate');
+        $level      = Arrays::value($compInfo, 'level');
+        
+        if($cate == 'bao'){
+            // 初始添加个人包车
+            $data['type_key']       = 'personal';
+            $data['customer_name']  = '个人包车';
+            $data['short_name']     = '个人包车';
+
+            self::saveRam($data);
+        }
+
+        return $res;
+    }
 }

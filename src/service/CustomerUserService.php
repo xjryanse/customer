@@ -17,7 +17,12 @@ class CustomerUserService {
 
     use \xjryanse\traits\InstTrait;
     use \xjryanse\traits\MainModelTrait;
+    use \xjryanse\traits\MainModelRamTrait;
+    use \xjryanse\traits\MainModelCacheTrait;
+    use \xjryanse\traits\MainModelCheckTrait;
+    use \xjryanse\traits\MainModelGroupTrait;
     use \xjryanse\traits\MainModelQueryTrait;
+
     use \xjryanse\traits\MiddleModelTrait;
     use \xjryanse\traits\StaticModelTrait;
 
@@ -25,6 +30,9 @@ class CustomerUserService {
     protected static $mainModelClass = '\\xjryanse\\customer\\model\\CustomerUser';
     //直接执行后续触发动作
     protected static $directAfter = true;
+    
+    use \xjryanse\customer\service\user\DimTraits;
+
     
     public static function extraDetails($ids) {
         return self::commExtraDetails($ids, function($lists) use ($ids){
@@ -53,7 +61,23 @@ class CustomerUserService {
         return self::mainModel()->where($con)->order($order)->column('customer_id');
     }
     /**
+     * 20240407
+     * @param type $userId
+     * @param type $customerType
+     */
+    public static function userCustomerIdWithType($userId, $customerType){
+        $con[] = ['a.user_id','in',$userId];
+        $con[] = ['b.customer_type','in',$customerType];
+        $customerTable = CustomerService::getTable();
+        return self::mainModel()->alias('a')
+                ->join($customerTable.' b','a.customer_id=b.id')
+                ->where($con)
+                ->column('customer_id');
+    }
+    
+    /**
      * 该用户是管理员的客户id数组
+     * 用 dimManageCustomerIdsByUserId 替代
      * @param type $userId
      * @return type
      */
@@ -162,7 +186,8 @@ class CustomerUserService {
         $con[] = ['user_id','=',$info['user_id']];
         $res = OrderService::mainModel()->where($con)->count(1);
         if($res){
-            throw new Exception('该用户单位有订单，不可删');
+            // 20240510：业务员解绑
+            // throw new Exception('该用户单位有订单，不可删');
         }
     }
     /**
